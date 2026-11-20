@@ -14,5 +14,14 @@ export default defineConfig({
     environment: 'jsdom', // Configura jsdom como entorno
     globals: true,        // Permite usar describe, it, expect sin importarlos cada vez
     setupFiles: './setupTests.js', // Archivo de configuración global que crearemos
+    coverage: {
+      provider: 'v8',
+      // Se mide todo src/ (también los archivos sin pruebas) para que el porcentaje sea real
+      include: ['src/**/*.{js,jsx}'],
+      exclude: ['src/**/*.test.{js,jsx}', 'src/main.jsx'],
+      reporter: ['text', 'html', 'clover', 'json'],
+      // Mínimos de aceptación del documento de cobertura: `npm run coverage` falla si no se cumplen
+      thresholds: { statements: 80, branches: 70, functions: 80, lines: 80 },
+    },
   },
 });
