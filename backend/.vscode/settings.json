@@ -1,0 +1,11 @@
+{
+    "java.compile.nullAnalysis.mode": "disabled",
+    "java.configuration.updateBuildConfiguration": "interactive",
+    "java.test.config": {
+        "vmArgs": [
+            "-XX:+EnableDynamicAgentLoading",
+            "-Djdk.attach.allowAttachSelf=true",
+            "-javaagent:C:/temp/byte-buddy-agent.jar"
+        ]
+    }
+}
