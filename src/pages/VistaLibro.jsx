@@ -1,15 +1,27 @@
 // src/pages/VistaLibro.jsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { librosBd } from '../data/libros';
+import { obtenerLibro } from '../services/api';
 import BotonDirecciones from '../components/BotonDirecciones';
 
 const VistaLibro = () => {
   // useParams extrae el "/:id" de la URL
   const { id } = useParams();
   
-  // Buscamos el libro en nuestra base de datos falsa
-  const libro = librosBd.find(l => l.id === parseInt(id));
+  const [libro, setLibro] = useState(null);
+  const [cargando, setCargando] = useState(true);
+
+  // Pedimos el libro al backend
+  useEffect(() => {
+    obtenerLibro(id)
+      .then(setLibro)
+      .catch(() => setLibro(null))
+      .finally(() => setCargando(false));
+  }, [id]);
+
+  if (cargando) {
+    return <main style={{ padding: '4rem 2rem', textAlign: 'center' }}><p>Cargando libro...</p></main>;
+  }
 
   // Si el usuario inventa un ID en la URL que no existe
   if (!libro) {

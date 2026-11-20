@@ -1,22 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { pedirLibro } from '../services/api';
+import { guardarSesion } from '../services/pedidos';
 
 const TarjetaLibro = ({ libro }) => {
   const navigate = useNavigate();
-  // Estado local para manejar el stock en pantalla al instante
+  // Estado local para manejar el stock en pantalla al instante (viene del backend)
   const [stockActual, setStockActual] = useState(libro.stock);
-
-  // Al cargar la tarjeta, revisamos si el localStorage tiene un stock actualizado
-  useEffect(() => {
-    const stockGuardado = JSON.parse(localStorage.getItem('stockLibros')) || {};
-    if (stockGuardado[libro.id] !== undefined) {
-      setStockActual(stockGuardado[libro.id]);
-    }
-  }, [libro.id]);
 
   const irADetalles = () => navigate(`/libro/${libro.id}`);
 
-  const manejarPedir = (e) => {
+  const manejarPedir = async (e) => {
     e.stopPropagation(); 
     
     if (stockActual <= 0) {
@@ -38,6 +32,15 @@ const TarjetaLibro = ({ libro }) => {
       return;
     }
 
+    // El backend descuenta el stock y valida que no esté agotado
+    let libroActualizado;
+    try {
+      libroActualizado = await pedirLibro(libro.id);
+    } catch (error) {
+      alert(error.message || "No se pudo pedir el libro.");
+      return;
+    }
+
     const fechaHoy = new Date();
     const fechaDev = new Date();
     fechaDev.setDate(fechaHoy.getDate() + 14); 
@@ -54,21 +57,9 @@ const TarjetaLibro = ({ libro }) => {
     };
 
     usuarioActual.pedidos.push(nuevoPedido);
-    localStorage.setItem('usuarioLogeado', JSON.stringify(usuarioActual));
+    guardarSesion(usuarioActual);
 
-    const usuarios = JSON.parse(localStorage.getItem('usuarios')) || [];
-    const index = usuarios.findIndex(u => u.email === usuarioActual.email);
-    if (index !== -1) {
-      usuarios[index] = usuarioActual;
-      localStorage.setItem('usuarios', JSON.stringify(usuarios));
-    }
-
-    const nuevoStock = stockActual - 1;
-    setStockActual(nuevoStock);
-    
-    const stockGlobal = JSON.parse(localStorage.getItem('stockLibros')) || {};
-    stockGlobal[libro.id] = nuevoStock;
-    localStorage.setItem('stockLibros', JSON.stringify(stockGlobal));
+    setStockActual(libroActualizado.stock);
 
     alert(`¡Éxito! Has pedido: ${libro.titulo}`);
   };

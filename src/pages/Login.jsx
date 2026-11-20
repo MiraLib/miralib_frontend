@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import BloqueInput from '../components/BloqueInput';
 import BotonDirecciones from '../components/BotonDirecciones';
+import { obtenerUsuarios } from '../services/api';
+import { obtenerPedidos, guardarSesion } from '../services/pedidos';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -9,15 +11,28 @@ const Login = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  // Esta es la función que faltaba
-  const manejarLogin = (e) => {
+  const manejarLogin = async (e) => {
     e.preventDefault();
-    
-    const usuarios = JSON.parse(localStorage.getItem('usuarios')) || [];
-    const usuarioValido = usuarios.find(user => user.email === email && user.password === password);
+    setError('');
+
+    let usuarios;
+    try {
+      usuarios = await obtenerUsuarios();
+    } catch {
+      setError('No se pudo conectar con el servidor de MiraLib.');
+      return;
+    }
+
+    // El backend aún no tiene endpoint de login, así que se valida contra la lista de usuarios
+    const usuarioValido = usuarios.find(user => user.correo === email && user.contrasena === password);
 
     if (usuarioValido) {
-      localStorage.setItem('usuarioLogeado', JSON.stringify(usuarioValido));
+      guardarSesion({
+        id: usuarioValido.id,
+        nombre: usuarioValido.nombre,
+        email: usuarioValido.correo,
+        pedidos: obtenerPedidos(usuarioValido.correo),
+      });
       navigate('/perfil');
     } else {
       setError('Correo o contraseña incorrectos');

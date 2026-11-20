@@ -1,21 +1,31 @@
-import React, { useState } from 'react';
-import { librosBd } from '../data/libros';
+import React, { useState, useEffect } from 'react';
+import { obtenerLibros } from '../services/api';
 import TarjetaLibro from '../components/TarjetaLibro';
 import BuscadorLibro from '../components/BuscadorLibro';
 import FiltroLibro from '../components/FiltroLibro';
 
 const Libros = () => {
+  const [libros, setLibros] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState('');
   const [busqueda, setBusqueda] = useState('');
   
   // ¡CAMBIO CLAVE! Ahora es un arreglo vacío [] en lugar de un texto ''
   const [categoriasSeleccionadas, setCategoriasSeleccionadas] = useState([]); 
 
-  const categoriasUnicas = [...new Set(librosBd.map(libro => libro.categoria))];
+  useEffect(() => {
+    obtenerLibros()
+      .then(todos => setLibros(todos.filter(l => !l.proximamente))) // los de "Próximamente" no se pueden pedir aún
+      .catch(() => setError('No se pudo conectar con el servidor de MiraLib.'))
+      .finally(() => setCargando(false));
+  }, []);
+
+  const categoriasUnicas = [...new Set(libros.map(libro => libro.categoria).filter(Boolean))];
 
   // Lógica de filtrado actualizada para múltiples categorías
-  const librosFiltrados = librosBd.filter(libro => {
-    const coincideTexto = libro.titulo.toLowerCase().includes(busqueda.toLowerCase()) || 
-                          libro.autor.toLowerCase().includes(busqueda.toLowerCase());
+  const librosFiltrados = libros.filter(libro => {
+    const coincideTexto = (libro.titulo || '').toLowerCase().includes(busqueda.toLowerCase()) || 
+                          (libro.autor || '').toLowerCase().includes(busqueda.toLowerCase());
                           
     // Si no hay categorías marcadas (arreglo vacío), mostramos todas.
     // Si hay categorías, verificamos si la categoría del libro está en nuestro arreglo de seleccionadas.
@@ -53,7 +63,11 @@ const Libros = () => {
 
           {/* GRILLA DE LIBROS */}
           <div className="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-4">
-            {librosFiltrados.length > 0 ? (
+            {cargando ? (
+              <div className="col-12 text-center py-5"><p style={{ color: 'gray' }}>Cargando libros...</p></div>
+            ) : error ? (
+              <div className="col-12 text-center py-5"><p style={{ color: 'red' }}>{error}</p></div>
+            ) : librosFiltrados.length > 0 ? (
               librosFiltrados.map(libro => (
                 <div className="col" key={libro.id}>
                   <TarjetaLibro libro={libro} />

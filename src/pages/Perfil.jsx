@@ -2,11 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import BotonDirecciones from '../components/BotonDirecciones';
 import LibrosPedidos from '../components/LibrosPedidos'; 
-import { librosBd } from '../data/libros';
+import { obtenerLibros, devolverLibro } from '../services/api';
+import { guardarSesion } from '../services/pedidos';
 
 const Perfil = () => {
   const [usuario, setUsuario] = useState(null);
+  const [libros, setLibros] = useState([]);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    obtenerLibros().then(setLibros).catch(() => setLibros([]));
+  }, []);
 
   useEffect(() => {
     const sesionActiva = JSON.parse(localStorage.getItem('usuarioLogeado'));
@@ -24,36 +30,24 @@ const Perfil = () => {
 
   const guardarCambios = (usuarioActualizado) => {
     setUsuario(usuarioActualizado);
-    localStorage.setItem('usuarioLogeado', JSON.stringify(usuarioActualizado));
-    const usuarios = JSON.parse(localStorage.getItem('usuarios')) || [];
-    const index = usuarios.findIndex(u => u.email === usuarioActualizado.email);
-    if (index !== -1) {
-      usuarios[index] = usuarioActualizado;
-      localStorage.setItem('usuarios', JSON.stringify(usuarios));
-    }
+    guardarSesion(usuarioActualizado);
   };
 
   //  DEVOLUCIÓN y STOCK
-  const manejarDevolucion = (idLibro) => {
+  const manejarDevolucion = async (idLibro) => {
     const confirmar = window.confirm("¿Estás seguro de que deseas devolver este libro?");
-    
+
     if (confirmar) {
+      try {
+        await devolverLibro(idLibro); // suma 1 al stock en el backend
+      } catch (error) {
+        alert(error.message || 'No se pudo devolver el libro.');
+        return;
+      }
+
       const usuarioActualizado = { ...usuario };
       usuarioActualizado.pedidos = usuarioActualizado.pedidos.filter(p => p.idLibro !== idLibro);
       guardarCambios(usuarioActualizado);
-
-      const stockGlobal = JSON.parse(localStorage.getItem('stockLibros')) || {};
-      const libroOriginal = librosBd.find(l => l.id === idLibro);
-      
-      let stockActual = 0;
-      if (stockGlobal[idLibro] !== undefined) {
-        stockActual = stockGlobal[idLibro];
-      } else if (libroOriginal) {
-        stockActual = libroOriginal.stock;
-      }
-      
-      stockGlobal[idLibro] = stockActual + 1;
-      localStorage.setItem('stockLibros', JSON.stringify(stockGlobal));
 
       alert('¡Libro devuelto con éxito! El stock en el catálogo ha aumentado.');
     }
@@ -112,7 +106,7 @@ const Perfil = () => {
       {usuario.pedidos.length > 0 ? (
         <div className="d-flex flex-column gap-3">
           {usuario.pedidos.map((pedido, index) => {
-            const infoLibro = librosBd.find(l => l.id === pedido.idLibro);
+            const infoLibro = libros.find(l => l.id === pedido.idLibro);
             if(!infoLibro) return null;
 
             return (

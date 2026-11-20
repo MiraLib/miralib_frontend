@@ -1,27 +1,26 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { librosBd } from '../data/libros';
+import { obtenerLibros } from '../services/api';
 import TarjetaLibro from '../components/TarjetaLibro';
 
 const Inicio = () => {
-  const librosRecientes = librosBd.slice(0, 3);
+  const [librosRecientes, setLibrosRecientes] = useState([]);
+  const [librosProximamente, setLibrosProximamente] = useState([]);
 
-  const librosProximamente = [
-    {
-      id: 101,
-      titulo: "Coraline",
-      autor: "Neil Gaiman",
-      categoria: "Literatura infantil",
-      imagen: "https://images.cdn1.buscalibre.com/fit-in/660x660/0b/a9/0ba9cadc466f5329d6abf5a68d76cd1a.jpg"
-    },
-    {
-      id: 102,
-      titulo: "Las aventuras de Alicia en el país de las maravillas",
-      autor: "Lewis Carroll",
-      categoria: "Cuento de hadas",
-      imagen: "https://cdnx.jumpseller.com/cafe-entre-paginas/image/48935279/ALICIA_EN_EL_PAIS_DE_LAS_MARAVILLAS_1_.jpeg?1716167664"
-    }
-  ];
+  useEffect(() => {
+    // Todo viene del backend (incluidas las portadas)
+    obtenerLibros()
+      .then(libros => {
+        const disponibles = libros.filter(l => !l.proximamente);
+        // Los 3 libros con ID más alto = los últimos agregados
+        setLibrosRecientes([...disponibles].sort((a, b) => b.id - a.id).slice(0, 3));
+        setLibrosProximamente(libros.filter(l => l.proximamente));
+      })
+      .catch(() => {
+        setLibrosRecientes([]);
+        setLibrosProximamente([]);
+      });
+  }, []);
 
   return (
     <main className="container" style={{ padding: '4rem 0', maxWidth: '1200px' }}>

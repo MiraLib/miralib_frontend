@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import BloqueInput from '../components/BloqueInput';
 import BotonDirecciones from '../components/BotonDirecciones';
+import { obtenerUsuarios, registrarUsuario } from '../services/api';
 
 const Registro = () => {
   const [nombre, setNombre] = useState('');
@@ -9,19 +10,22 @@ const Registro = () => {
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
 
-  const manejarRegistro = (e) => {
-    e.preventDefault(); 
+  const manejarRegistro = async (e) => {
+    e.preventDefault();
 
-    const usuariosExistentes = JSON.parse(localStorage.getItem('usuarios')) || [];
+    try {
+      const usuariosExistentes = await obtenerUsuarios();
+      const existe = usuariosExistentes.find(user => user.correo === email);
+      if (existe) {
+        alert('Este correo ya está registrado.');
+        return;
+      }
 
-    const existe = usuariosExistentes.find(user => user.email === email);
-    if (existe) {
-      alert('Este correo ya está registrado.');
+      await registrarUsuario({ nombre, email, password });
+    } catch {
+      alert('No se pudo conectar con el servidor de MiraLib.');
       return;
     }
-
-    const nuevoUsuario = { nombre, email, password, pedidos: [] };
-    localStorage.setItem('usuarios', JSON.stringify([...usuariosExistentes, nuevoUsuario]));
 
     alert('Registro exitoso. Ahora puedes iniciar sesión.');
     navigate('/login'); 
