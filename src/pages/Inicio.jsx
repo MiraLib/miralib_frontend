@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { obtenerLibros } from '../services/api';
 import TarjetaLibro from '../components/TarjetaLibro';
+import { useMisPedidos } from '../hooks/useMisPedidos';
 
 const Inicio = () => {
+  const { solicitados, pedirLibro } = useMisPedidos();
   const [librosRecientes, setLibrosRecientes] = useState([]);
   const [librosProximamente, setLibrosProximamente] = useState([]);
 
@@ -52,7 +54,7 @@ const Inicio = () => {
         <div className="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-4 justify-content-center">
           {librosRecientes.map(libro => (
             <div className="col" key={libro.id}>
-              <TarjetaLibro libro={libro} />
+              <TarjetaLibro libro={libro} solicitado={solicitados.has(libro.id)} onPedir={pedirLibro} />
             </div>
           ))}
         </div>

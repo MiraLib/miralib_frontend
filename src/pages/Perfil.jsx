@@ -2,72 +2,60 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import BotonDirecciones from '../components/BotonDirecciones';
 import LibrosPedidos from '../components/LibrosPedidos'; 
-import { obtenerLibros, devolverLibro } from '../services/api';
-import { guardarSesion } from '../services/pedidos';
+import { obtenerPedidos, devolverPedido, extenderPedido } from '../services/api';
+import { obtenerSesion, cerrarSesion as borrarSesion } from '../services/sesion';
 
 const Perfil = () => {
-  const [usuario, setUsuario] = useState(null);
-  const [libros, setLibros] = useState([]);
+  const [usuario] = useState(obtenerSesion);
+  const [pedidos, setPedidos] = useState([]);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  useEffect(() => {
-    obtenerLibros().then(setLibros).catch(() => setLibros([]));
-  }, []);
+  // Los pedidos del usuario vienen del backend
+  const cargarPedidos = (usuarioId) =>
+    obtenerPedidos(usuarioId)
+      .then(lista => { setPedidos(lista); setError(''); })
+      .catch(() => setError('No se pudieron cargar tus pedidos desde el servidor de MiraLib.'));
 
   useEffect(() => {
-    const sesionActiva = JSON.parse(localStorage.getItem('usuarioLogeado'));
-    if (sesionActiva) {
-      sesionActiva.pedidos = sesionActiva.pedidos || [];
-      setUsuario(sesionActiva);
-    }
-  }, []);
+    if (usuario) cargarPedidos(usuario.id);
+  }, [usuario]);
+
+  // Activos = Vigente o Vencido (se pueden devolver/extender); devueltos = historial
+  const activos = pedidos.filter(p => p.estado !== 'Devuelto');
+  const devueltos = pedidos.filter(p => p.estado === 'Devuelto');
 
   const cerrarSesion = () => {
-    localStorage.removeItem('usuarioLogeado');
-    setUsuario(null);
-    navigate('/login'); 
+    borrarSesion();
+    navigate('/login');
   };
 
-  const guardarCambios = (usuarioActualizado) => {
-    setUsuario(usuarioActualizado);
-    guardarSesion(usuarioActualizado);
-  };
-
-  //  DEVOLUCIÓN y STOCK
-  const manejarDevolucion = async (idLibro) => {
+  //  DEVOLUCIÓN y STOCK (el backend suma 1 al stock y marca el pedido como "Devuelto")
+  const manejarDevolucion = async (idPedido) => {
     const confirmar = window.confirm("¿Estás seguro de que deseas devolver este libro?");
 
     if (confirmar) {
       try {
-        await devolverLibro(idLibro); // suma 1 al stock en el backend
+        await devolverPedido(idPedido);
       } catch (error) {
         alert(error.message || 'No se pudo devolver el libro.');
         return;
       }
-
-      const usuarioActualizado = { ...usuario };
-      usuarioActualizado.pedidos = usuarioActualizado.pedidos.filter(p => p.idLibro !== idLibro);
-      guardarCambios(usuarioActualizado);
-
+      await cargarPedidos(usuario.id);
       alert('¡Libro devuelto con éxito! El stock en el catálogo ha aumentado.');
     }
   };
 
-  const manejarResolicitar = (idLibro) => {
-    const usuarioActualizado = { ...usuario };
-    const pedidoIndex = usuarioActualizado.pedidos.findIndex(p => p.idLibro === idLibro);
-    if (pedidoIndex !== -1) {
-      const pedido = usuarioActualizado.pedidos[pedidoIndex];
-      const partesFecha = pedido.fechaDevolucion.split(/[-/]/); 
-      if(partesFecha.length !== 3) return; 
-      const fechaDevOriginal = new Date(partesFecha[2], partesFecha[1] - 1, partesFecha[0]);
-      fechaDevOriginal.setDate(fechaDevOriginal.getDate() + 7);
-      const strNuevaDev = fechaDevOriginal.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
-      usuarioActualizado.pedidos[pedidoIndex].fechaDevolucion = strNuevaDev;
-      usuarioActualizado.pedidos[pedidoIndex].estado = "Vigente"; 
-      guardarCambios(usuarioActualizado);
-      alert('Se ha extendido tu plazo de devolución por 7 días más.');
+  // Re-Solicitar: el backend extiende la devolución 7 días
+  const manejarResolicitar = async (idPedido) => {
+    try {
+      await extenderPedido(idPedido);
+    } catch (error) {
+      alert(error.message || 'No se pudo extender el plazo.');
+      return;
     }
+    await cargarPedidos(usuario.id);
+    alert('Se ha extendido tu plazo de devolución por 7 días más.');
   };
 
   if (!usuario) {
@@ -102,28 +90,36 @@ const Perfil = () => {
       </div>
 
       <h3 className="mb-4">Libros Pedidos</h3>
-      
-      {usuario.pedidos.length > 0 ? (
-        <div className="d-flex flex-column gap-3">
-          {usuario.pedidos.map((pedido, index) => {
-            const infoLibro = libros.find(l => l.id === pedido.idLibro);
-            if(!infoLibro) return null;
 
-            return (
-              <LibrosPedidos 
-                key={index}
-                pedido={pedido}
-                infoLibro={infoLibro}
-                manejarDevolucion={manejarDevolucion}
-                manejarResolicitar={manejarResolicitar}
-              />
-            );
-          })}
+      {error ? (
+        <p className="text-center mt-4" style={{ color: 'red' }}>{error}</p>
+      ) : activos.length > 0 ? (
+        <div className="d-flex flex-column gap-3">
+          {activos.map(pedido => (
+            <LibrosPedidos
+              key={pedido.id}
+              pedido={pedido}
+              infoLibro={pedido.libro}
+              manejarDevolucion={manejarDevolucion}
+              manejarResolicitar={manejarResolicitar}
+            />
+          ))}
         </div>
       ) : (
-        <p className="text-center mt-4">Aún no has pedido ningún libro.</p>
+        <p className="text-center mt-4">No tienes libros pedidos en este momento.</p>
       )}
-      
+
+      {!error && devueltos.length > 0 && (
+        <>
+          <h3 className="mt-5 mb-4" style={{ color: 'gray' }}>Historial de devoluciones</h3>
+          <div className="d-flex flex-column gap-3">
+            {devueltos.map(pedido => (
+              <LibrosPedidos key={pedido.id} pedido={pedido} infoLibro={pedido.libro} />
+            ))}
+          </div>
+        </>
+      )}
+
     </main>
   );
 };

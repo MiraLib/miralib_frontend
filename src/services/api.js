@@ -17,6 +17,9 @@ const pedir = async (ruta, opciones = {}) => {
   return texto ? JSON.parse(texto) : null;
 };
 
+// "2026-12-04" (backend) -> "04-12-2026" (como se muestra en MiraLib)
+const aFechaChilena = (iso) => (iso ? iso.split('-').reverse().join('-') : '');
+
 // --- Libros ---
 
 // Convierte el libro del backend (Book.java) al formato que usan los componentes.
@@ -40,21 +43,6 @@ export const obtenerLibro = async (id) => {
   return libro ? aLibroFront(libro) : null;
 };
 
-// Descuenta 1 de stock en el backend y devuelve el libro actualizado.
-export const pedirLibro = async (id) => aLibroFront(await pedir(`/books/send/${id}`, { method: 'PUT' }));
-
-// Suma 1 de stock en el backend (no hay endpoint dedicado, así que se re-guarda el libro).
-export const devolverLibro = async (id) => {
-  const libro = await pedir(`/books/id?id=${encodeURIComponent(id)}`);
-  if (!libro) throw new Error('Libro no encontrado');
-  return aLibroFront(
-    await pedir('/books/add', {
-      method: 'POST',
-      body: JSON.stringify({ ...libro, stock: libro.stock + 1 }),
-    })
-  );
-};
-
 // --- Usuarios ---
 
 export const obtenerUsuarios = () => pedir('/users');
@@ -66,3 +54,35 @@ export const registrarUsuario = ({ nombre, email, password }) =>
     // (Es obligatorio: User.id es int primitivo y el backend rechaza el JSON sin id.)
     body: JSON.stringify({ id: 0, nombre, correo: email, contrasena: password }),
   });
+
+// --- Pedidos (Pedido.java) ---
+
+// Convierte el pedido del backend al formato que usan Perfil y LibrosPedidos.
+const aPedidoFront = (p) => ({
+  id: p.id,
+  idLibro: p.libro.id,
+  libro: aLibroFront(p.libro),
+  fechaPedido: aFechaChilena(p.fechaPedido),
+  fechaDevolucion: aFechaChilena(p.fechaDevolucion),
+  estado: p.estado, // "Vigente" | "Vencido" | "Devuelto"
+});
+
+export const obtenerPedidos = async (usuarioId) =>
+  (await pedir(`/pedidos/usuario/${usuarioId}`)).map(aPedidoFront);
+
+// Crea el pedido y descuenta stock en el backend. Devuelve el pedido con el libro actualizado.
+export const crearPedido = async (usuarioId, libroId) =>
+  aPedidoFront(
+    await pedir('/pedidos/add', {
+      method: 'POST',
+      body: JSON.stringify({ usuarioId, libroId }),
+    })
+  );
+
+// Devuelve el libro: +1 stock y el pedido queda "Devuelto".
+export const devolverPedido = async (pedidoId) =>
+  aPedidoFront(await pedir(`/pedidos/devolver/${pedidoId}`, { method: 'PUT' }));
+
+// Re-Solicitar: +7 días a la fecha de devolución.
+export const extenderPedido = async (pedidoId) =>
+  aPedidoFront(await pedir(`/pedidos/extender/${pedidoId}`, { method: 'PUT' }));

@@ -24,30 +24,33 @@ const LibrosPedidos = ({ pedido, infoLibro, manejarDevolucion, manejarResolicita
             <strong>Pedido:</strong> {pedido.fechaPedido} <br />
             <strong>{esDevuelto ? 'Estado:' : 'Devolución:'}</strong> 
             <span style={{ color: colorEstado, fontWeight: esDevuelto ? 'bold' : 'normal', marginLeft: '5px' }}>
-              {pedido.fechaDevolucion}
+              {esDevuelto ? 'Devuelto' : pedido.fechaDevolucion}
+              {pedido.estado === 'Vencido' && ' (Vencido)'}
             </span>
           </p>
         </div>
       </div>
 
-      <div className="d-flex flex-wrap gap-2 justify-content-start justify-content-md-end">
-        <button 
-          onClick={() => manejarDevolucion(infoLibro.id)} 
-          className="btn btn-sm" 
-          style={{ border: '1px solid var(--accent)', color: 'var(--text)' }}
-          disabled={esDevuelto}
-        >
-          {esDevuelto ? 'Entregado' : 'Devolver'}
-        </button>
-        <button 
-          onClick={() => manejarResolicitar(infoLibro.id)} 
-          className="btn btn-sm" 
-          style={{ backgroundColor: 'var(--accent)', color: 'white' }}
-          disabled={esDevuelto}
-        >
-          Re-Solicitar
-        </button>
-      </div>
+      {/* Un pedido devuelto es solo historial: no tiene acciones */}
+      {!esDevuelto && (
+        <div className="d-flex flex-wrap gap-2 justify-content-start justify-content-md-end">
+          <button
+            onClick={() => manejarDevolucion(pedido.id)}
+            className="btn btn-sm"
+            style={{ border: '1px solid var(--accent)', color: 'var(--text)' }}
+          >
+            Devolver
+          </button>
+          <button
+            onClick={() => manejarResolicitar(pedido.id)}
+            className="btn btn-sm"
+            style={{ backgroundColor: 'var(--accent)', color: 'white' }}
+            title="Extiende la fecha de devolución 7 días"
+          >
+            Extender plazo
+          </button>
+        </div>
+      )}
 
     </div>
   );

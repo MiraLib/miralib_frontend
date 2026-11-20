@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { obtenerLibros } from '../services/api';
 import TarjetaLibro from '../components/TarjetaLibro';
+import { useMisPedidos } from '../hooks/useMisPedidos';
 import BuscadorLibro from '../components/BuscadorLibro';
 import FiltroLibro from '../components/FiltroLibro';
 
 const Libros = () => {
+  const { solicitados, pedirLibro } = useMisPedidos();
   const [libros, setLibros] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
@@ -70,7 +72,7 @@ const Libros = () => {
             ) : librosFiltrados.length > 0 ? (
               librosFiltrados.map(libro => (
                 <div className="col" key={libro.id}>
-                  <TarjetaLibro libro={libro} />
+                  <TarjetaLibro libro={libro} solicitado={solicitados.has(libro.id)} onPedir={pedirLibro} />
                 </div>
               ))
             ) : (

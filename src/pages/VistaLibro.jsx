@@ -3,13 +3,23 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { obtenerLibro } from '../services/api';
 import BotonDirecciones from '../components/BotonDirecciones';
+import { useMisPedidos, estadoLibro } from '../hooks/useMisPedidos';
 
 const VistaLibro = () => {
   // useParams extrae el "/:id" de la URL
   const { id } = useParams();
-  
+
   const [libro, setLibro] = useState(null);
   const [cargando, setCargando] = useState(true);
+  const [enviando, setEnviando] = useState(false);
+  const { solicitados, pedirLibro } = useMisPedidos();
+
+  const manejarPedir = async () => {
+    setEnviando(true);
+    const libroActualizado = await pedirLibro(libro);
+    setEnviando(false);
+    if (libroActualizado) setLibro(prev => ({ ...prev, stock: libroActualizado.stock }));
+  };
 
   // Pedimos el libro al backend
   useEffect(() => {
@@ -32,6 +42,8 @@ const VistaLibro = () => {
       </main>
     );
   }
+
+  const estado = estadoLibro(libro, libro.stock, solicitados.has(libro.id));
 
   return (
     <main style={{ padding: '3rem 2rem', maxWidth: '800px', margin: '0 auto' }}>
@@ -66,8 +78,25 @@ const VistaLibro = () => {
           <h2>Sinopsis</h2>
           <p style={{ lineHeight: '1.6', marginTop: '1rem' }}>{libro.sinopsis}</p>
           
-          <div style={{ marginTop: '3rem' }}>
-            <BotonDirecciones texto="Pedir este libro ahora" onClick={() => alert('¡Pedido en proceso!')} ancho="fit-content" />
+          <p style={{ marginTop: '1.5rem', color: libro.stock > 0 ? 'var(--text)' : 'red' }}>
+            {libro.proximamente
+              ? 'Este libro estará disponible próximamente.'
+              : libro.stock > 0 ? `Disponibles: ${libro.stock}` : 'Agotado por ahora.'}
+          </p>
+
+          <div style={{ marginTop: '2rem' }}>
+            <BotonDirecciones
+              texto={enviando ? 'Pidiendo...' : estado.puedePedir ? 'Pedir este libro ahora' : estado.texto}
+              onClick={manejarPedir}
+              deshabilitado={!estado.puedePedir || enviando}
+              colorFondo={estado.puedePedir || estado.tipo === 'solicitado' ? 'var(--accent)' : 'gray'}
+              ancho="fit-content"
+            />
+            {estado.tipo === 'solicitado' && (
+              <p style={{ marginTop: '0.8rem', fontSize: '0.9rem', color: 'gray' }}>
+                Ya tienes este libro. Puedes devolverlo o extender el plazo desde <Link to="/perfil" style={{ color: 'var(--accent)' }}>tu Perfil</Link>.
+              </p>
+            )}
           </div>
         </div>
       </div>

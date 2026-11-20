@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import BloqueInput from '../components/BloqueInput';
 import BotonDirecciones from '../components/BotonDirecciones';
 import { obtenerUsuarios } from '../services/api';
-import { obtenerPedidos, guardarSesion } from '../services/pedidos';
+import { guardarSesion } from '../services/sesion';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -31,7 +31,6 @@ const Login = () => {
         id: usuarioValido.id,
         nombre: usuarioValido.nombre,
         email: usuarioValido.correo,
-        pedidos: obtenerPedidos(usuarioValido.correo),
       });
       navigate('/perfil');
     } else {
