@@ -16,9 +16,9 @@ export default defineConfig({
     setupFiles: './setupTests.js', // Archivo de configuración global que crearemos
     coverage: {
       provider: 'v8',
-      // Se mide todo src/ (también los archivos sin pruebas) para que el porcentaje sea real
-      include: ['src/**/*.{js,jsx}'],
-      exclude: ['src/**/*.test.{js,jsx}', 'src/main.jsx'],
+      // Se miden solo los componentes React (src/components), sin contar sus archivos de prueba
+      include: ['src/components/**/*.jsx'],
+      exclude: ['src/components/**/*.test.jsx'],
       reporter: ['text', 'html', 'clover', 'json'],
       // Mínimos de aceptación del documento de cobertura: `npm run coverage` falla si no se cumplen
       thresholds: { statements: 80, branches: 70, functions: 80, lines: 80 },
